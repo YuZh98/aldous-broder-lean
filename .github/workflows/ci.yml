@@ -11,7 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: leanprover/lean-action@v1
-      - name: Reject sorry
-        run: "! grep -rnwE 'sorry|admit' EAB"
+      - name: Verification script regressions
+        run: python3 -m unittest discover -s scripts/tests -v
+      - name: Reject unfinished proofs
+        run: python3 scripts/check_proofs.py
       - name: Axiom audit
         run: python3 scripts/check_axioms.py

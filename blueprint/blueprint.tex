@@ -3,6 +3,7 @@
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Blueprint for the Lean Proof of the Order-Mass Identity, the Aldous-Broder Theorem, and the Stopped-Forest Law},pdfauthor={Hugh Zheng}}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0.3em}
 \emergencystretch=2em
@@ -35,6 +36,12 @@ This document states the definitions, lemmas and proofs that the Lean
 development in \path{EAB/Paper/} follows, at the index types used in
 Lean. The docstrings of the Lean files cite its labels, such as
 \texttt{lem:orders} or \texttt{thm:stopped}.
+
+The directed Aldous--Broder theorem is an existing result of Hu,
+Lyons and Tang, \emph{A reverse Aldous--Broder algorithm} (2021),
+Theorem~3.4.\footnote{\url{https://doi.org/10.1214/20-AIHP1101}}
+The formalization follows the manuscript's proof through the
+order--mass identity.
 
 \section{Matrix and harmonic-extension notation}
 
@@ -340,12 +347,13 @@ each $v\in Z$ and repeatedly applying $f$ while the current vertex
 lies in $Z$, the sequence reaches $B$. Let $q_B(v)\geq1$ be its
 first hitting time of $B$, let $f^{(t)}(v)$ denote the iterates up to
 that time, and put $r_B(v)=f^{(q_B(v))}(v)$.
-For a typed implementation, extend $f$ to $V$ by fixing every vertex
-of $B$, and use this total map to define the iterates and the least
+The Lean implementation extends $f$ to $V$ by fixing every vertex
+of $B$, and uses this total map to define the iterates and the least
 positive hitting time. All iterates before that time lie in $Z$;
 consequently $q_B(v)$, $r_B(v)$, descendant blocks, orders, and
-weights depend only on the original map $f:Z\to V$. Prove this
-independence before using a total-map representation in a theorem.
+weights depend only on the original map $f:Z\to V$. The theorem
+statements accept this partial parent map; its extension is fixed by
+the definition and introduces no additional parent values.
 
 \begin{definition}[Root and descendant blocks]\label{def:blocks}
 For $j\in B$ and $u\in Z$, set
@@ -1003,8 +1011,7 @@ additional application targets. In Sections 1--4, $\Lmat$ is an
 arbitrary real zero-row-sum matrix where stated. In the chain
 sections it is specialized to $\Id-P^*$ by \eqref{eq:reverse}.
 
-The following boundary conditions are part of the statements to be
-formalized.
+The following boundary conditions are part of the formalized statements.
 \begin{enumerate}
 \item A root set in the order--mass theorem is nonempty and proper,
 so $k=|V\setminus B|\geq1$. The peeling bijection and the fold are
@@ -1031,14 +1038,20 @@ $w_P(f)=0$. It cannot be obtained by cancelling that weight.
 Its separate perturbation-and-continuity argument is required.
 \end{enumerate}
 
-The manuscript's $B$-parent map is a function on $Z=V\setminus B$.
-A total Lean function $f:V\to V$ may be used internally only after
-proving that values on $B$ do not affect the forest, orders, blocks,
-weights, or theorem statement. The paper-facing theorem should
-accept a map on the non-roots, or provide an explicit equivalence
-with that formulation. Likewise, $\cof_i(A)$ always deletes both
+The manuscript's $B$-parent map is a function on $Z=V\setminus B$,
+as is the Lean type \texttt{ParentAssignment B}. The public theorems
+accept this partial map; \texttt{extendParents} fixes the roots only
+to express its iterates. Likewise, $\cof_i(A)$ always deletes both
 row and column $i$; the two matrix levels $\Lmat[B]$ and
 $\Nmat(B,M_f)$ must not be conflated.
+
+The notation for completion weights differs between the manuscript
+and this blueprint. Here $\varphi_r(f)$ denotes the algebraic factor
+$g(B,f)^{\mathsf T}\Lmat[B]^{-1}\mathbf e_r$, represented by
+\texttt{Chain.completionFactor}. The manuscript's completion weight
+is the sum on the left of \eqref{eq:completion-weight}, including
+the additional factor
+$\det\Lmat[B]\prod_{j\in B\setminus\{r\}}\pi_j$ on the right.
 
 
 \end{document}
