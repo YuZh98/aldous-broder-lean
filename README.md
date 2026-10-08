@@ -42,15 +42,16 @@ All declarations are in the namespace `EAB.Paper`.
 
 | Paper | Blueprint | Lean declaration |
 |---|---|---|
-| Definition 2.2, (2.2) | Definition 1.3, Lemma 1.4 | `Foundation.harmonic`, `Foundation.gamma`, `Foundation.harmonic_unique`, `Foundation.harmonic_one` |
+| Definition 2.2, (2.2) | Definition 1.3, Lemma 1.4 | `Foundation.harmonic`, `Foundation.gamma`, `Foundation.harmonic_one` |
+| Lemma 2.3 | Lemma 1.4 | `Foundation.harmonic_boundary`, `Foundation.harmonic_interior_row`, `Foundation.harmonic_unique` |
 | (2.3) | Definition 1.3 | `Γ^U_{uv}` is `Foundation.gamma L U v u` for `u ∈ U` |
 | Lemma 2.1 | Lemma 1.2 | `Foundation.adjugate_apply_eq_principalCofactor`, `Foundation.principalCofactor_left_kernel`, `Foundation.det_add_rank_one_zero_row_sum` |
-| Definition 2.5, Lemma 2.6 | Definitions 3.1 and 3.3, Lemma 3.2 | `IsPaperParentMap`, `growthOrders`, `rootIndicator`, `rootBlock_pairwiseDisjoint`, `rootBlocks_cover`, `childDescendants_cover` |
+| Definition 2.5, Lemma 2.6 | Definitions 3.1 and 3.3, Lemma 3.2 | `IsPaperParentMap`, `growthOrders`, `rootIndicator`, `rootBlock_pairwiseDisjoint`, `rootBlocks_cover`, `childDescendants_pairwise`, `childDescendants_cover` |
 | (3.3), Definition 4.3 | Definition 3.3 | `orderWeight`, `orderMass` |
 | Lemma 5.1 | Lemmas 2.5 and 2.6 | `Foundation.one_vertex_transfer`, `Foundation.one_vertex_transfer_singleton` |
 | **Theorem 4.5** (order-mass identity) | Theorems 4.1 and 4.2 | **`order_mass_identity`**, `single_root_normalization` |
-| Lemma 3.3 | Lemmas 5.2 and 5.4 | `Chain.det_principal_reversedMatrix_pos`, `Chain.green_hasSum`, `Chain.green_reversal`, `Chain.inv_diag_eq_det_ratio`, `Chain.inv_column_eq_gamma` |
-| Lemma 3.4 | Lemma 5.3 | `Chain.isStationary_cofactor`, `Chain.IsStationary.cofactorVec_eq` |
+| Lemma 3.3 | Lemmas 5.2 and 5.4 | `Chain.reversedMatrix_mulVec_one`, `Chain.det_principal_reversedMatrix`, `Chain.det_principal_reversedMatrix_pos`, `Chain.green_hasSum`, `Chain.green_reversal`, `Chain.inv_diag_eq_det_ratio`, `Chain.inv_column_eq_gamma` |
+| Lemma 3.4 | Lemma 5.3 | `Chain.cofactorVec_pos`, `Chain.isStationary_cofactor`, `Chain.IsStationary.cofactorVec_eq` |
 | Proposition 3.2, growth-order formula (3.5) | Lemmas 5.6 and 5.7 | `Chain.chainLaw_orderEvent_eq` |
 | **Theorem 6.1** (Aldous–Broder) | Theorem 6.2 | **`Chain.aldous_broder`**, **`Chain.aldous_broder_normalized`** |
 | **Theorem 6.4** (stopped covering walk) | Theorem 7.3 | **`Chain.stopped_forest_law`** |
@@ -72,9 +73,18 @@ All declarations are in the namespace `EAB.Paper`.
 - Lemma 2.6 is formalized for the children of roots, the case the proof uses;
   `Foundation.one_vertex_transfer` allows a fold along any weights summing to
   one, of which Lemma 5.1 is the fold into a single root.
-- Proposition 3.2 is formalized for growth orders in its general form (3.5).
-  The statement for incompatible orderings and the single-root
-  simplification (3.6) are not stated separately as matching corollaries.
+- Proposition 3.2 is formalized for growth orders in its general form (3.5);
+  `Chain.chainLaw_orderEvent_eq` also states that the real number on the
+  right is nonnegative, so the probability equals it rather than its
+  truncation at zero. The statement for incompatible orderings and the
+  single-root simplification (3.6) are not stated separately as matching
+  corollaries.
+- `Chain.stopped_forest_law` states the law of Theorem 6.4 in the form
+  `det L[B] w(F_0) g(B,f)ᵀ L[B]⁻¹ e_r / (π_r ∏_{v∉B} π_v · 1ᵀλ)` from the
+  paper's proof, together with (6.3). Combined, they give the second
+  expression of (6.2). Its first expression, a ratio of sums of tree weights,
+  follows from `Chain.chainLaw_forestEvent_marginal` and
+  `Chain.aldous_broder_normalized` but is not stated as one theorem.
 
 ### Completion-weight notation
 
@@ -89,8 +99,9 @@ where `L = Chain.reversedMatrix P π`.
 
 ### Not formalized
 
-Theorem 6.2, Corollaries 4.9 and 6.6, Appendices C and D of the paper, and its
-numerical experiments.
+Theorem 6.2, Corollaries 4.9 and 6.6, the determinant formula (6.4) for the
+completion weight, the worked examples of Appendix A, Appendices C and D of the
+paper, and its numerical experiments.
 
 ## Verification
 
@@ -135,11 +146,8 @@ checks and the script regression tests on every push and pull request.
 See [`CITATION.cff`](CITATION.cff), or use GitHub's "Cite this repository"
 button.
 
-The `v1.0.0` release corresponds to the manuscript version identified above.
-For reproducibility, cite that release rather than the changing `main`
-branch. Release notes record the toolchain, formalized scope, and verification
-commands. A version-specific archival DOI can be added after the public
-release is deposited on Zenodo.
+For reproducibility, cite a tagged release rather than the changing `main`
+branch.
 
 ## License
 

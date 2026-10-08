@@ -181,7 +181,8 @@ theorem forestLawValue_nonneg (hP : IsStochastic P)
 variable [MeasurableSpace V] [MeasurableSingletonClass V]
 
 /-- **Lemma `lem:joint-order`.** The joint law of the first-entrance
-forest and its discovery order, for a growth order `(z, rest)`. -/
+forest and its discovery order, for a growth order `(z, rest)`. The
+real number on the right is nonnegative, so the probability equals it. -/
 theorem chainLaw_orderEvent_eq (hP : IsStochastic P)
     (hirr : IsIrreducible P) (hπ : IsStationary P π)
     (hcard : 2 ≤ Fintype.card V) (B : Finset V) (r : B)
@@ -195,10 +196,20 @@ theorem chainLaw_orderEvent_eq (hP : IsStochastic P)
           forestWeight P π B f *
           invEntry (reversedMatrix P π) B (extendParents B f z) r *
           orderWeight (reversedMatrix P π) (extendParents B f) B
-            (z :: rest)) := by
+            (z :: rest)) ∧
+      0 ≤ (Foundation.principal (reversedMatrix P π) B).det /
+            (π r * (∏ v ∈ univ \ B, π v) * cofactorSum P) *
+          forestWeight P π B f *
+          invEntry (reversedMatrix P π) B (extendParents B f z) r *
+          orderWeight (reversedMatrix P π) (extendParents B f) B
+            (z :: rest) := by
   have hord : z :: rest ∈ orderings B :=
     ((mem_growthOrders_iff_parentsBefore B f _).mp hτ).1
   obtain ⟨hnodup, hfin⟩ := (mem_orderings B _).mp hord
+  have hnn := excursionWeight_nonneg_of_mem_growthOrders hP hirr B r f hτ
+  rw [excursionWeight_eq hP hirr hπ hcard _ rest z B r r.2 hnodup hfin,
+    orderPi_eq π B hord, orderEdgeWeight_eq P π B f hord] at hnn
+  refine ⟨?_, hnn⟩
   rw [chainLaw_orderEvent P hP hirr _ (z :: rest) B r r.2 hnodup
       hfin,
     excursionWeight_eq hP hirr hπ hcard _ rest z B r r.2 hnodup hfin,
