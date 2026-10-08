@@ -46,9 +46,9 @@ python3 scripts/check_axioms.py
 python3 -m unittest discover -s scripts/tests -v
 ```
 
-CI runs the build, source scan, axiom audit, and 18 script regression tests.
+CI runs the build, source scan, axiom audit, and script regression tests.
 The scan rejects unfinished proofs and missing or unreadable inputs. The
-audit requires exactly 16 theorem reports and permits only `propext`,
+audit requires every theorem in its fixed inventory and permits only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Read
@@ -57,9 +57,9 @@ audit requires exactly 16 theorem reports and permits only `propext`,
 |---|---|
 | [Formalization reference](docs/formalization.md) | Paper map, modeling choices, and omitted results |
 | [Blueprint PDF](blueprint/blueprint.pdf) · [LaTeX source](blueprint/blueprint.tex) | Definitions and proofs |
-| [Lean sources](EAB/Paper/) | 21 modules; imported by [EAB.lean](EAB.lean) |
+| [Lean sources](EAB/Paper/) | Proof modules; imported by [EAB.lean](EAB.lean) |
 | [Change notes](CHANGELOG.md) | Brief notes for releases |
-| [Contributing](CONTRIBUTING.md) | Verification and writing conventions |
+| [Contributing](CONTRIBUTING.md) | Verification and documentation updates |
 
 ## Cite
 
