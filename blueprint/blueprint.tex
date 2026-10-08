@@ -1,0 +1,1044 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.3em}
+\emergencystretch=2em
+\allowdisplaybreaks
+
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{theorem}[definition]{Theorem}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\one}{\mathbf 1}
+\newcommand{\zero}{\mathbf 0}
+\newcommand{\Id}{\mathbf I}
+\newcommand{\Lmat}{\mathbf L}
+\newcommand{\Nmat}{\mathbf N}
+\newcommand{\gam}{\boldsymbol\gamma}
+\newcommand{\Ord}{\mathcal O}
+\newcommand{\cof}{\operatorname{cof}}
+\newcommand{\adj}{\operatorname{adj}}
+\newcommand{\rank}{\operatorname{rank}}
+
+\begin{document}
+\title{Blueprint for the Lean Proof of the Order--Mass Identity,
+the Aldous--Broder Theorem, and the Stopped-Forest Law}
+\author{Hugh Zheng}
+\date{}
+\maketitle
+
+This document states the definitions, lemmas and proofs that the Lean
+development in \path{EAB/Paper/} follows, at the index types used in
+Lean. The docstrings of the Lean files cite its labels, such as
+\texttt{lem:orders} or \texttt{thm:stopped}.
+
+\section{Matrix and harmonic-extension notation}
+
+Throughout, $V$ is a finite set with $n=|V|\geq2$ and
+$\Lmat\in\R^{V\times V}$. For subsets $R,C\subseteq V$,
+$\Lmat[R,C]$ is the submatrix with rows $R$ and columns $C$, and
+$\Lmat[U]:=\Lmat[U,U]$. All matrix and vector indices are the indicated
+finite sets. We use the finite Leibniz formula for determinants
+also when the index set is empty. There is exactly one permutation
+of $\varnothing$, with sign $1$, and its term is an empty product,
+equal to $1$. Thus the determinant of the unique $0\times0$
+matrix is $1$. This value is needed only to read
+Theorem~\ref{thm:order-mass} when $|B|=1$; the proof of
+Theorem~\ref{thm:single-root} and Sections 5--7 do not use it.
+The vectors $\one_S,\zero_S\in\R^S$ are constant, and $\mathbf e_u$
+is the coordinate vector at $u$. For a nonempty finite set $S$ and a
+matrix $A\in\R^{S\times S}$, write
+\[
+\cof_u(A):=\det\bigl(A[S\setminus\{u\}]\bigr),\qquad
+\mathbf d(A):=(\cof_u(A))_{u\in S}.
+\]
+For $D\subseteq S$, the notation $\mathbf1_D\in\R^S$ means its
+indicator. Empty sums and products are $0$ and $1$.
+
+\begin{lemma}[Identity plus rank one]\label{lem:identity-rank-one}
+For any finite set $S$ and $a,y\in\R^S$,
+\[
+\det(\Id_S+ay^{\mathsf T})=1+y^{\mathsf T}a.
+\]
+\end{lemma}
+\begin{proof}
+Expand the determinant by multilinearity in its columns. Terms
+using $a$ in at least two columns vanish. The term using no such
+column is $1$, while replacing column $j$ of $\Id_S$ by $a$
+has determinant $a_j$; hence the remaining terms sum to
+$\sum_{j\in S}y_ja_j$.
+\end{proof}
+
+\begin{lemma}[Cofactors of a zero-row-sum matrix]\label{lem:cofactor}
+Let $S$ be nonempty and $A\in\R^{S\times S}$ satisfy
+$A\one_S=\zero_S$. Put $\mathbf d=\mathbf d(A)$. Then
+\[
+\adj(A)=\one_S\mathbf d^{\mathsf T},\qquad
+\mathbf d^{\mathsf T}A=\zero_S^{\mathsf T}.
+\]
+For all $a,y\in\R^S$,
+\begin{equation}\label{eq:cofactor-rank-one}
+\det(A+ay^{\mathsf T})
+= (y^{\mathsf T}\one_S)(a^{\mathsf T}\mathbf d).
+\end{equation}
+\end{lemma}
+\begin{proof}
+The nonzero vector $\one_S$ lies in $\ker A$, so $\det A=0$.
+If $\rank A=|S|-1$, then $\ker A=\R\one_S$; the identity
+$A\adj(A)=0$ makes each column of $\adj(A)$ constant, with value
+its diagonal entry $\cof_u(A)$ in column $u$. If
+$\rank A\leq |S|-2$, every $(|S|-1)$-minor vanishes and both
+$\adj(A)$ and $\mathbf d$ are zero. Thus in either case
+$\adj(A)=\one_S\mathbf d^{\mathsf T}$. The identity
+$\adj(A)A=\det(A)\Id_S=0$ gives
+$\mathbf d^{\mathsf T}A=0$ by reading any row.
+
+Multilinearity in columns, with terms that replace two columns by
+multiples of $a$ vanishing, gives
+\[
+\det(A+ay^{\mathsf T})
+=\det A+\sum_{j\in S}y_j\det(A\text{ with column }j
+\text{ replaced by }a).
+\]
+Expansion of a replaced column gives
+$\det(A\text{ with column }j\text{ replaced by }a)
+=\sum_{u\in S}a_u\adj(A)_{ju}=a^{\mathsf T}\mathbf d$.
+Since $\det A=0$, the displayed sum is
+$(\sum_jy_j)(a^{\mathsf T}\mathbf d)$.
+\end{proof}
+
+\begin{definition}[Harmonic extension]\label{def:harmonic}
+Let $U\subsetneq V$ and $\det\Lmat[U]\neq0$. For a boundary vector
+$m\in\R^{V\setminus U}$, define $\gam^U(m)\in\R^V$ by
+\begin{equation}\label{eq:harmonic}
+\gam^U(m)|_{V\setminus U}=m,
+\qquad
+\gam^U(m)|_U
+=-\Lmat[U]^{-1}\Lmat[U,V\setminus U]m.
+\end{equation}
+When $U=\varnothing$, the second equation is empty and
+$\gam^\varnothing(m)=m$. For $w\notin U$, abbreviate
+$\gam^{U,w}:=\gam^U(\mathbf e_w)$.
+\end{definition}
+
+\begin{lemma}[Characterization, linearity, and unit boundary]\label{lem:harmonic}
+Under Definition~\ref{def:harmonic}, $\gam^U(m)$ is the unique
+$g\in\R^V$ with $g|_{V\setminus U}=m$ and
+$(\Lmat g)|_U=\zero_U$. The map $m\mapsto\gam^U(m)$ is linear.
+If in addition $\Lmat\one_V=\zero_V$, then
+\begin{equation}\label{eq:unity}
+\gam^U(\one_{V\setminus U})=\one_V,
+\qquad
+\sum_{w\in V\setminus U}\gam^{U,w}=\one_V.
+\end{equation}
+\end{lemma}
+\begin{proof}
+The restriction of $\Lmat\gam^U(m)$ to $U$ is
+$\Lmat[U]\gam^U(m)|_U+\Lmat[U,V\setminus U]m=0$.
+If two vectors have the required boundary and row values, their
+difference vanishes off $U$ and its restriction to $U$ is in the
+kernel of the invertible matrix $\Lmat[U]$; hence they coincide.
+The formula in \eqref{eq:harmonic} is linear in $m$. Under zero row
+sums, $\one_V$ has boundary value $\one_{V\setminus U}$ and is
+annihilated on $U$, so uniqueness yields the first identity in
+\eqref{eq:unity}. The second follows by linearity from
+$\one_{V\setminus U}=\sum_{w\notin U}\mathbf e_w$.
+\end{proof}
+
+\begin{lemma}[One-vertex harmonic update]\label{lem:one-step}
+Let $U\subsetneq V$, $w\notin U$, and $U'=U\cup\{w\}\subsetneq V$.
+Assume $\det\Lmat[U]\neq0$ and $\det\Lmat[U']\neq0$.
+For $m\in\R^{V\setminus U'}$, let $\widetilde m\in\R^{V\setminus U}$
+extend $m$ by $\widetilde m_w=0$. Then
+\begin{equation}\label{eq:one-step}
+\gam^{U'}(m)
+=\gam^U(\widetilde m)
+ +\bigl(\gam^{U'}(m)\bigr)_w\gam^{U,w}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Both sides are annihilated by the rows $U$ of $\Lmat$. They agree
+off $U$: at $w$ the right side is
+$0+(\gam^{U'}(m))_w\cdot1$; at every other vertex outside $U$ its
+second term is zero and its first term equals $m$. Uniqueness in
+Lemma~\ref{lem:harmonic} proves the equality.
+\end{proof}
+
+\section{Aggregated matrices and one-vertex transfer}
+
+\begin{definition}[Aggregation matrix]\label{def:aggregation}
+For nonempty $U\subsetneq V$ with $\det\Lmat[U]\neq0$ and
+$M\in\R^{(V\setminus U)\times U}$, put
+\begin{equation}\label{eq:aggregation}
+\Nmat(U,M)
+:=\Id_U+\Lmat[U]^{-1}\Lmat[U,V\setminus U]M
+\in\R^{U\times U}.
+\end{equation}
+The matrix $M$ has \emph{unit row sums} if
+$M\one_U=\one_{V\setminus U}$.
+\end{definition}
+
+\begin{lemma}[Harmonic columns and zero row sums]\label{lem:aggregation}
+For $j\in U$, let $m_j=M_{\cdot j}\in\R^{V\setminus U}$. Then
+\begin{equation}\label{eq:aggregation-column}
+\Nmat(U,M)_{\cdot j}
+=\mathbf e_j-\gam^U(m_j)|_U.
+\end{equation}
+If $\Lmat\one_V=0$ and $M$ has unit row sums, then
+$\Nmat(U,M)\one_U=0$.
+\end{lemma}
+\begin{proof}
+Equation~\eqref{eq:aggregation-column} is
+\eqref{eq:harmonic} applied to the column $m_j$. Summing it over
+$j\in U$ and using linearity and
+$\sum_jm_j=M\one_U=\one_{V\setminus U}$ gives
+$\Nmat(U,M)\one_U=\one_U-\gam^U(\one_{V\setminus U})|_U=0$
+by \eqref{eq:unity}.
+\end{proof}
+
+\begin{definition}[Fold]\label{def:fold}
+Let $U\subsetneq V$ be nonempty, $w\in V\setminus U$,
+$U'=U\cup\{w\}\subsetneq V$, and
+$M'\in\R^{(V\setminus U')\times U'}$.
+For $\theta\in\R^U$ with $\sum_{j\in U}\theta_j=1$, define its
+fold $M=\operatorname{fold}_{w,\theta}(M')
+\in\R^{(V\setminus U)\times U}$ by
+\begin{equation}\label{eq:fold}
+M_{wj}=\theta_j,
+\qquad
+M_{vj}=M'_{vj}+M'_{vw}\theta_j
+\quad(v\in V\setminus U',\ j\in U).
+\end{equation}
+Write $s=M'_{\cdot w}\in\R^{V\setminus U'}$ and let
+$\widetilde s\in\R^{V\setminus U}$ extend $s$ by zero at $w$.
+For $j\in U'$, let $\widetilde m'_j\in\R^{V\setminus U}$ similarly
+extend $M'_{\cdot j}$ by zero at $w$.
+\end{definition}
+
+\begin{lemma}[Fold identities]\label{lem:fold}
+If $M'$ has unit row sums, so does $M$. For $j\in U$,
+\begin{equation}\label{eq:fold-column}
+\widetilde m'_j=M_{\cdot j}
+ -\theta_j(\widetilde s+\mathbf e_w)
+\quad\text{in }\R^{V\setminus U}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+The row of $M$ at $w$ sums to $\sum_j\theta_j=1$. For
+$v\in V\setminus U'$, its sum is
+$\sum_{j\in U}M'_{vj}+M'_{vw}\sum_{j\in U}\theta_j
+=\sum_{j\in U'}M'_{vj}=1$.
+At $w$, the right side of \eqref{eq:fold-column} is
+$\theta_j-\theta_j=0$; at $v\neq w$ it is
+$M'_{vj}+M'_{vw}\theta_j-\theta_jM'_{vw}=M'_{vj}$.
+\end{proof}
+
+\begin{lemma}[One-vertex transfer]\label{lem:transfer}
+Assume $\Lmat\one_V=0$. Let $U\subseteq V$ be nonempty with
+$|U|\leq n-2$, choose $w\in V\setminus U$, and put
+$U'=U\cup\{w\}$. Assume
+$\det\Lmat[U]\neq0$ and $\det\Lmat[U']\neq0$.
+Let $M'\in\R^{(V\setminus U')\times U'}$ have unit row sums,
+let $\theta\in\R^U$ satisfy $\sum_{j\in U}\theta_j=1$,
+and set $M=\operatorname{fold}_{w,\theta}(M')$.
+With $s$ and $\widetilde s$ as in Definition~\ref{def:fold},
+\begin{equation}\label{eq:transfer}
+\sum_{x\in U'}\gam^{U,w}_x\,
+  \cof_x\bigl(\Nmat(U',M')\bigr)
+=\sum_{x\in U}\gam^U(\widetilde s+\mathbf e_w)_x\,
+  \cof_x\bigl(\Nmat(U,M)\bigr).
+\end{equation}
+In particular, the right side is independent of $\theta$.
+\end{lemma}
+\begin{proof}
+For $j\in U'$, let $m'_j=M'_{\cdot j}$ and define
+\[
+\widehat G_{xj}:=\gam^U(\widetilde m'_j)_x
+\quad(x,j\in U'),\qquad
+\rho_j:=\gam^{U'}(m'_j)_w,
+\qquad a:=\gam^{U,w}|_{U'}.
+\]
+Applying \eqref{eq:one-step} to every column, followed by
+\eqref{eq:aggregation-column}, gives
+\begin{equation}\label{eq:transfer-rank-one}
+\Nmat(U',M')=(\Id_{U'}-\widehat G)-a\rho^{\mathsf T}.
+\end{equation}
+Since the rows of $M'$ sum to one, linearity of harmonic extension
+and \eqref{eq:unity}, read at $w$, give
+$\sum_{j\in U'}\rho_j=1$. Also
+$\widehat G_{wj}=\widetilde m'_j(w)=0$ for every $j$.
+
+Put $D:=\det(\Id_{U'}-\widehat G)$. Equation
+\eqref{eq:transfer-rank-one}, Lemma~\ref{lem:aggregation}, and
+\eqref{eq:cofactor-rank-one}, applied to
+$A=\Nmat(U',M')$, yield
+\begin{equation}\label{eq:transfer-left}
+D=\sum_{x\in U'}a_x\cof_x\bigl(\Nmat(U',M')\bigr).
+\end{equation}
+The row $w$ of $\Id_{U'}-\widehat G$ is the coordinate row
+$\mathbf e_w^{\mathsf T}$. Expanding its determinant along this row,
+\begin{equation}\label{eq:transfer-drop}
+D=\det\bigl((\Id_{U'}-\widehat G)[U]\bigr).
+\end{equation}
+For $j\in U$, use \eqref{eq:fold-column}, linearity of harmonic
+extension, and \eqref{eq:aggregation-column}. They give
+\begin{equation}\label{eq:transfer-block}
+(\Id_{U'}-\widehat G)[U]
+=\Nmat(U,M)+a'\theta^{\mathsf T},
+\qquad
+a':=\gam^U(\widetilde s+\mathbf e_w)|_U.
+\end{equation}
+The fold has unit row sums by Lemma~\ref{lem:fold}, so
+Lemma~\ref{lem:aggregation} gives $\Nmat(U,M)\one_U=0$.
+Applying \eqref{eq:cofactor-rank-one} again and using
+$\sum_j\theta_j=1$ yields
+\begin{equation}\label{eq:transfer-right}
+D=\sum_{x\in U}a'_x\cof_x\bigl(\Nmat(U,M)\bigr).
+\end{equation}
+Equations \eqref{eq:transfer-left} and \eqref{eq:transfer-right}
+are \eqref{eq:transfer}.
+\end{proof}
+
+\begin{lemma}[Transfer onto a one-vertex base]\label{lem:single-base}
+Assume the hypotheses of Lemma~\ref{lem:transfer} on $\Lmat$, $U$,
+$w$, $U'$ and $M'$, with $U=\{r\}$. Then
+\begin{equation}\label{eq:single-base}
+\sum_{x\in U'}\gam^{U,w}_x\,
+  \cof_x\bigl(\Nmat(U',M')\bigr)
+=\gam^U(\widetilde s+\mathbf e_w)_r .
+\end{equation}
+Both cofactors on the left are determinants of $1\times1$ matrices.
+\end{lemma}
+\begin{proof}
+Use the notation of the proof of Lemma~\ref{lem:transfer}.
+Equation~\eqref{eq:transfer-left} identifies the left side with
+$D$. Its derivation applies Lemma~\ref{lem:cofactor} to the
+$2\times2$ matrix $\Nmat(U',M')$ only, and does not involve
+$\theta$. By \eqref{eq:transfer-drop}, $D$ is the determinant of
+the $1\times1$ matrix $(\Id_{U'}-\widehat G)[U]$. The Leibniz
+formula on a one-element index set has the single term of the
+identity permutation, so $D$ is the entry of that matrix at $(r,r)$.
+
+Let $\theta\in\R^U$ have its only coordinate equal to $1$ and let
+$M=\operatorname{fold}_{w,\theta}(M')$. By Lemmas~\ref{lem:fold}
+and~\ref{lem:aggregation}, $\Nmat(U,M)\one_U=0$. The index set $U$
+has one element, so this says $\Nmat(U,M)_{rr}=0$. The entry at
+$(r,r)$ of \eqref{eq:transfer-block} is therefore
+$D=0+a'_r\theta_r=\gam^U(\widetilde s+\mathbf e_w)_r$.
+No determinant on an empty index set occurs.
+\end{proof}
+
+\section{Parent maps, root indicators, and growth orders}
+
+Let $B\subsetneq V$ be nonempty, put $Z=V\setminus B$, and let
+$k=|Z|$. A map $f:Z\to V$ is a \emph{$B$-parent map} if, starting at
+each $v\in Z$ and repeatedly applying $f$ while the current vertex
+lies in $Z$, the sequence reaches $B$. Let $q_B(v)\geq1$ be its
+first hitting time of $B$, let $f^{(t)}(v)$ denote the iterates up to
+that time, and put $r_B(v)=f^{(q_B(v))}(v)$.
+For a typed implementation, extend $f$ to $V$ by fixing every vertex
+of $B$, and use this total map to define the iterates and the least
+positive hitting time. All iterates before that time lie in $Z$;
+consequently $q_B(v)$, $r_B(v)$, descendant blocks, orders, and
+weights depend only on the original map $f:Z\to V$. Prove this
+independence before using a total-map representation in a theorem.
+
+\begin{definition}[Root and descendant blocks]\label{def:blocks}
+For $j\in B$ and $u\in Z$, set
+\[
+Z_j:=\{v\in Z:r_B(v)=j\},
+\qquad
+D_u:=\{v\in Z:\text{for some }0\leq t<q_B(v),\ f^{(t)}(v)=u\}.
+\]
+The root indicator $M_f\in\{0,1\}^{Z\times B}$ is
+$(M_f)_{vj}=\mathbf1_{Z_j}(v)$.
+A vertex $w\in Z$ with $f(w)=i\in B$ is a \emph{child} of $i$.
+\end{definition}
+
+\begin{lemma}[Root and child partitions]\label{lem:blocks}
+The sets $(Z_j)_{j\in B}$ partition $Z$, so
+$M_f\one_B=\one_Z$. For each $i\in B$, the sets $D_w$ over the
+children $w$ of $i$ are pairwise disjoint and partition $Z_i$.
+\end{lemma}
+\begin{proof}
+The first hit $r_B(v)$ exists and is unique for every $v\in Z$,
+giving the first partition. If $v\in Z_i$, the last non-root on
+its path before the first hit $i$ is the unique
+$w=f^{(q_B(v)-1)}(v)$ with $f(w)=i$; thus $v\in D_w$.
+Conversely, if $v\in D_w$ and $f(w)=i\in B$, the path from $v$
+reaches $w$ before any root and then reaches $i$, so $v\in Z_i$.
+The last non-root before the first root is unique, proving
+disjointness.
+\end{proof}
+
+\begin{definition}[Growth orders and weights]\label{def:orders}
+A \emph{growth order} of $f$ is an ordering
+$\tau=(\tau_1,\ldots,\tau_k)$ of $Z$ such that
+\[
+U_l^{\tau}:=B\cup\{\tau_1,\ldots,\tau_l\}
+\quad(0\leq l\leq k),\qquad
+f(\tau_l)\in U_{l-1}^{\tau}
+\quad(1\leq l\leq k).
+\]
+Write $\Ord_B(f)$ for the set of these orders. Whenever the
+indicated harmonic extensions exist, set
+\[
+\Pi_{B,f}(\tau):=
+\prod_{l=1}^{k-1}
+  \gam^{U_{l-1}^{\tau},\tau_l}_{f(\tau_{l+1})},
+\qquad
+\mathcal G_i(B,f):=
+\sum_{\substack{\tau\in\Ord_B(f)\\ f(\tau_1)=i}}
+  \Pi_{B,f}(\tau)\quad(i\in B).
+\]
+For $k=1$, the product is $1$.
+\end{definition}
+
+\begin{lemma}[Existence and peeling of growth orders]\label{lem:orders}
+Every $B$-parent map has a growth order. Suppose $k\geq2$.
+If $w\in Z$ is a child
+of $i\in B$, put $B'=B\cup\{w\}$ and let $f'$ be the restriction of
+$f$ to $V\setminus B'$. Then $f'$ is a $B'$-parent map and
+\[
+\tau'\longmapsto(w,\tau')
+\]
+is a bijection from $\Ord_{B'}(f')$ onto the growth orders of $f$
+whose first vertex is $w$. If $k\geq2$ and
+$\tau'=(\tau'_1,\ldots,\tau'_{k-1})$, then
+\begin{equation}\label{eq:weight-peel}
+\Pi_{B,f}(w,\tau')
+=\gam^{B,w}_{f(\tau'_1)}\Pi_{B',f'}(\tau').
+\end{equation}
+Every proper prefix base of $\tau'$ is a proper prefix base of
+$(w,\tau')$, with its prefix length increased by one.
+\end{lemma}
+\begin{proof}
+If $k\geq2$ and $w$ is any child of a root, $B'=B\cup\{w\}$
+remains proper. Every remaining parent path reaches $B'$, stopping
+at $w$ if it meets $w$ before $B$; hence $f'$ is a
+$B'$-parent map.
+
+If $k=1$, its only vertex $w$ must satisfy $f(w)\in B$, since
+otherwise its path would never hit $B$; hence $(w)$ is a growth
+order. For $k\geq2$, follow the path of any $v\in Z$ to its first
+root. Its predecessor $w\in Z$ is a child of that root.
+Induction on $k$, prepending $w$ to an order for $f'$,
+proves existence.
+
+For a fixed child $w$, its parent lies in $B$. After placing $w$
+first, the condition on each subsequent vertex is exactly the
+growth-order condition for $f'$ and base $B'$, proving the bijection.
+The first factor of the product for $(w,\tau')$ is
+$\gam^{B,w}_{f(\tau'_1)}$; shifting all remaining indices by one
+gives the factors of $\Pi_{B',f'}(\tau')$. The equality of the
+prefix bases is
+$B'\cup\{\tau'_1,\ldots,\tau'_l\}
+=B\cup\{w,\tau'_1,\ldots,\tau'_l\}$.
+\end{proof}
+
+\begin{lemma}[Peeling folds the root indicator]\label{lem:forest-fold}
+Under the $k\geq2$ hypotheses of Lemma~\ref{lem:orders},
+let $M'=M_{f'}$ and regard
+$\mathbf e_i\in\R^B$ as a vector with coordinate sum one. Then
+\[
+M_f=\operatorname{fold}_{w,\mathbf e_i}(M'),
+\qquad
+\widetilde s+\mathbf e_w=\mathbf1_{D_w}
+\quad\text{in }\R^Z,
+\]
+where $s=M'_{\cdot w}$ is the column of the new root $w$.
+\end{lemma}
+\begin{proof}
+The row of $M_f$ at $w$ is $\mathbf e_i^{\mathsf T}$ because
+$f(w)=i$. For $v\neq w$, if its path first meets $w$ before any
+vertex of $B$, its new root is $w$ and its old root is $i$;
+otherwise its new and old roots coincide in $B$.
+Consequently, for each $j\in B$,
+$(M_f)_{vj}=(M')_{vj}+(M')_{vw}\mathbf1_{\{i\}}(j)$,
+which is the fold formula. The column $s$ indicates the remaining
+vertices whose paths first meet $w$; adjoining $w$ itself gives
+precisely $D_w$.
+\end{proof}
+
+\section{Order--mass identity}
+
+\begin{theorem}[Order--mass identity]\label{thm:order-mass}
+Let $B\subsetneq V$ be nonempty, let $f:V\setminus B\to V$ be a
+$B$-parent map, and let $\Lmat\in\R^{V\times V}$ satisfy
+$\Lmat\one_V=0$ and
+\begin{equation}\label{eq:minor-hypothesis}
+\det\Lmat[U_l^{\tau}]\neq0
+\quad\text{for every }\tau\in\Ord_B(f)
+\text{ and }0\leq l\leq k-1.
+\end{equation}
+Then, for every $i\in B$,
+\begin{equation}\label{eq:order-mass}
+\mathcal G_i(B,f)
+=\cof_i\bigl(\Nmat(B,M_f)\bigr)
+=\det\!\left[
+  \bigl(\Id_B+\Lmat[B]^{-1}\Lmat[B,Z]M_f\bigr)
+    [B\setminus\{i\}]
+  \right].
+\end{equation}
+\end{theorem}
+\begin{proof}
+If $|B|=1$, the right side of \eqref{eq:order-mass} is
+$\det(\varnothing)=1$ by the Leibniz formula, and the identity is
+Theorem~\ref{thm:single-root}. The proof of that theorem uses the
+present one for a two-element root set only. Assume $|B|\geq2$.
+First establish the assertion for $|B|\geq2$ as a separate
+intermediate theorem. In that theorem, induct on $k=|Z|$,
+simultaneously for all proper root sets
+with at least two elements and their parent maps. The induction
+step enlarges the root set, so it stays within this class, and
+every determinant below is taken on a nonempty index set.
+Lemma~\ref{lem:orders} supplies a growth
+order, so \eqref{eq:minor-hypothesis} at $l=0$ makes
+$\Nmat(B,M_f)$ well defined.
+
+If $k=1$, write $Z=\{w\}$ and $i_0=f(w)\in B$. The only growth
+order is $(w)$; hence $\mathcal G_i(B,f)=\mathbf1_{\{i_0\}}(i)$.
+Zero row sums give
+$\Lmat[B]\one_B+\Lmat[B,\{w\}]\one_{\{w\}}=0$, so
+$\Nmat(B,M_f)=\Id_B-\one_B\mathbf e_{i_0}^{\mathsf T}$.
+Its principal cofactor is $1$ when $i=i_0$, because deleting that
+row and column leaves an identity matrix. When $i\neq i_0$, the
+remaining matrix is
+$\Id_{B\setminus\{i\}}-\one_{B\setminus\{i\}}
+\mathbf e_{i_0}^{\mathsf T}$ and has determinant $0$ by
+Lemma~\ref{lem:identity-rank-one}. This proves
+\eqref{eq:order-mass}.
+
+Suppose $k\geq2$, fix $i\in B$, and abbreviate
+$N=\Nmat(B,M_f)$ and $d_x=\cof_x(N)$. Lemmas
+\ref{lem:blocks} and \ref{lem:aggregation} imply $N\one_B=0$;
+therefore Lemma~\ref{lem:cofactor} gives
+\begin{equation}\label{eq:left-kernel}
+\sum_{x\in B}d_xN_{xi}=0.
+\end{equation}
+Group the growth orders counted by $\mathcal G_i(B,f)$ according
+to their first vertex $w$, necessarily a child of $i$. For each
+such $w$, use the notation $B',f',M'$ of Lemmas~\ref{lem:orders}
+and \ref{lem:forest-fold}. Lemma~\ref{lem:orders} also carries the
+minor condition to $f'$: every proper prefix base of a new order
+is the corresponding proper prefix base of an old order beginning
+with $w$. In particular, $\det\Lmat[B']\neq0$ because an order
+beginning with $w$ exists. The inductive hypothesis at each
+$x\in B'$, combined with \eqref{eq:weight-peel}, gives
+\begin{equation}\label{eq:induction-sum}
+\mathcal G_i(B,f)
+=\sum_{\substack{w\in Z\\ f(w)=i}}
+   \sum_{x\in B'}\gam^{B,w}_x\,
+      \cof_x\bigl(\Nmat(B',M')\bigr).
+\end{equation}
+
+For each $w$, Lemma~\ref{lem:forest-fold} identifies $M_f$ as
+the fold of $M'$ along $\mathbf e_i$ and identifies
+$\widetilde s+\mathbf e_w=\mathbf1_{D_w}$.
+Lemma~\ref{lem:transfer} changes the inner sum in
+\eqref{eq:induction-sum} into
+$\sum_{x\in B}\gam^B(\mathbf1_{D_w})_x d_x$.
+By Lemma~\ref{lem:blocks}, the $D_w$ for the children of $i$
+partition $Z_i$. Linearity in Lemma~\ref{lem:harmonic} therefore
+gives
+\[
+\mathcal G_i(B,f)
+=\sum_{x\in B}\gam^B(\mathbf1_{Z_i})_x d_x.
+\]
+The $i$th column of $M_f$ is $\mathbf1_{Z_i}$, so
+\eqref{eq:aggregation-column} says
+$\gam^B(\mathbf1_{Z_i})|_B=\mathbf e_i-N_{\cdot i}$.
+Using \eqref{eq:left-kernel},
+\[
+\mathcal G_i(B,f)
+=\sum_{x\in B}(\mathbf e_i-N_{\cdot i})_x d_x
+=d_i-\sum_{x\in B}d_xN_{xi}=d_i.
+\]
+The definition of $N$ gives the final displayed determinant in
+\eqref{eq:order-mass}.
+\end{proof}
+
+\begin{theorem}[Single-root normalization]\label{thm:single-root}
+Under the hypotheses of Theorem~\ref{thm:order-mass}, if
+$B=\{r\}$, then
+\[
+\sum_{\tau\in\Ord_{\{r\}}(f)}\Pi_{\{r\},f}(\tau)=1.
+\]
+\end{theorem}
+\begin{proof}
+Put $B=\{r\}$, $Z=V\setminus\{r\}$ and $k=|Z|=n-1$. The proof
+uses no determinant on an empty index set.
+
+If $k=1$, write $Z=\{w\}$. By Lemma~\ref{lem:orders} the only
+growth order is $(w)$, and $\Pi_{B,f}((w))=1$ by
+Definition~\ref{def:orders}. The sum is $1$.
+
+Suppose $k\geq2$. Every growth order $\tau$ has
+$f(\tau_1)\in U_0^\tau=\{r\}$, so its first vertex is a child of
+$r$. Lemma~\ref{lem:orders} supplies a growth order; hence
+\eqref{eq:minor-hypothesis} at $l=0$ gives $\det\Lmat[B]\neq0$.
+Fix a child $w$ of $r$ and use the notation $B'=\{r,w\}$, $f'$ and
+$M'=M_{f'}$ of Lemmas~\ref{lem:orders} and~\ref{lem:forest-fold}.
+The bijection of Lemma~\ref{lem:orders} and \eqref{eq:weight-peel},
+with the orders $\tau'$ grouped by $x=f(\tau'_1)\in B'$, give
+\begin{equation}\label{eq:single-root-peel}
+\sum_{\substack{\tau\in\Ord_B(f)\\ \tau_1=w}}\Pi_{B,f}(\tau)
+=\sum_{x\in B'}\gam^{B,w}_x\,\mathcal G_x(B',f').
+\end{equation}
+By Lemma~\ref{lem:orders}, $f'$ is a $B'$-parent map, $B'$ is
+proper because $k\geq2$, the minor condition
+\eqref{eq:minor-hypothesis} holds for $(B',f')$, and
+$\det\Lmat[B']\neq0$. Theorem~\ref{thm:order-mass} for the
+two-element root set $B'$ gives
+$\mathcal G_x(B',f')=\cof_x\bigl(\Nmat(B',M')\bigr)$ for
+$x\in B'$; these cofactors are determinants of $1\times1$
+matrices. That instance is proved by the induction on root sets
+with at least two elements, so the argument is not circular.
+
+The matrix $M'$ has unit row sums by Lemma~\ref{lem:blocks}, and
+$|B|=1\leq n-2$. Lemma~\ref{lem:single-base} with $U=B$ and
+$U'=B'$ evaluates the right side of \eqref{eq:single-root-peel}
+as $\gam^B(\widetilde s+\mathbf e_w)_r$, and
+Lemma~\ref{lem:forest-fold} gives
+$\widetilde s+\mathbf e_w=\mathbf1_{D_w}$. Hence
+\[
+\sum_{\substack{\tau\in\Ord_B(f)\\ \tau_1=w}}\Pi_{B,f}(\tau)
+=\gam^B(\mathbf1_{D_w})_r .
+\]
+Sum over the children $w$ of $r$. By Lemma~\ref{lem:blocks} the
+sets $D_w$ partition $Z_r$, and $Z_r=Z$ because $r$ is the only
+root. Linearity and \eqref{eq:unity} in Lemma~\ref{lem:harmonic}
+give
+\[
+\sum_{\tau\in\Ord_B(f)}\Pi_{B,f}(\tau)
+=\gam^B(\mathbf1_Z)_r=(\one_V)_r=1 .
+\]
+Under the Leibniz value $\det(\varnothing)=1$ this equality is
+Theorem~\ref{thm:order-mass} at $B=\{r\}$; the proof above does
+not rely on that reading.
+\end{proof}
+
+\section{Finite chains and confined excursions}
+
+\begin{definition}[Chain, reversal, and first entrances]
+\label{def:chain}
+A stochastic matrix $P\in\R^{V\times V}$ has $P_{uv}\geq0$ and
+$P\one_V=\one_V$. It is irreducible if, for every $u,v\in V$,
+some $t\geq0$ has $(P^t)_{uv}>0$.
+A stationary distribution is a vector $\pi\in\R^V$ with
+$\pi_v>0$, $\sum_v\pi_v=1$, and $\pi^{\mathsf T}P=\pi^{\mathsf T}$.
+For every stochastic $P$ put
+$\lambda_v=\det\bigl((\Id_V-P)[V\setminus\{v\}]\bigr)$ and
+$\Lambda=\sum_{v\in V}\lambda_v$. Given a stationary $\pi$, put
+\begin{equation}\label{eq:reverse}
+D=\operatorname{diag}(\pi),\qquad
+P^*=D^{-1}P^{\mathsf T}D,\qquad
+\Lmat=\Id_V-P^*.
+\end{equation}
+Let $(X_t)_{t\geq0}$ be the chain with transition matrix $P$
+started at $r$. Set
+$T_v=\inf\{t\geq0:X_t=v\}$ and
+$T_{\mathrm{cov}}=\max_{v\in V}T_v$.
+On the event of finite cover, its first-entrance tree has edges
+$(X_{T_v-1},v)$ for $v\neq r$.
+For $B\subsetneq V$ containing $r$, put $Z=V\setminus B$ and
+$T_B=\max_{v\in Z}T_v$. On the same event, its stopped
+first-entrance forest $F_B$ has edges $(X_{T_v-1},v)$ for $v\in Z$.
+For a $B$-parent map $f$, write
+\begin{equation}\label{eq:forest-weight}
+w_P(f):=\prod_{v\in Z}\pi_{f(v)}P_{f(v)v}.
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Proper confined minors and Green series]
+\label{lem:confined}
+For every irreducible stochastic $P$ and every nonempty proper
+$U\subset V$,
+\begin{equation}\label{eq:confined}
+\det(\Id_U-P[U])>0,
+\qquad
+G_U:=(\Id_U-P[U])^{-1}=\sum_{t\geq0}P[U]^t.
+\end{equation}
+There is $0\leq c_U<1$ such that, for every $m\in\mathbb N$,
+every row sum of $P[U]^{m(n-1)}$ is at most $c_U^m$.
+\end{lemma}
+\begin{proof}
+For each $i\in U$, irreducibility supplies a simple
+positive-probability path from $i$ to $V\setminus U$ of length
+at most $n-1$. Hence every row sum of $P[U]^{n-1}$ is less
+than one. Finiteness of $U$ gives a common bound
+$0\leq c_U<1$, since row sums are nonnegative;
+submultiplicativity of the maximum row-sum norm proves the
+geometric estimate. The Neumann series converges and multiplies
+$\Id_U-P[U]$ to $\Id_U$.
+The same bound applies to $tP[U]$ for $0\leq t\leq1$, so
+$\det(\Id_U-tP[U])$ never vanishes. It is continuous and equals
+$1$ at $t=0$; therefore it is positive at $t=1$.
+\end{proof}
+
+\begin{lemma}[Stationary distribution from principal cofactors]
+\label{lem:stationary}
+Every finite irreducible stochastic $P$ has a unique stationary
+distribution. With $\lambda$ and $\Lambda$ as in
+Definition~\ref{def:chain}, it is $\pi=\lambda/\Lambda$; in particular
+$\lambda_v>0$ and $\Lambda>0$.
+\end{lemma}
+\begin{proof}
+The positivity of $\lambda_v$ follows from
+Lemma~\ref{lem:confined} for $U=V\setminus\{v\}$;
+thus $\Lambda>0$.
+Apply Lemma~\ref{lem:cofactor} to $\Id_V-P$, whose row sums
+vanish. It gives
+$\lambda^{\mathsf T}(\Id_V-P)=0$, so
+$\pi=\lambda/\Lambda$ is a positive normalized stationary
+distribution. A nonzero $(n-1)$-minor makes
+$\operatorname{rank}(\Id_V-P)=n-1$. Its left kernel is therefore
+one-dimensional, so normalization makes $\pi$ unique.
+\end{proof}
+
+\begin{lemma}[Reversal and normalized inverse columns]
+\label{lem:green}
+Let $P$ be irreducible and stochastic, and let $\pi$ be stationary.
+Then $P^*$ is stochastic, $\Lmat\one_V=0$, and for every nonempty
+proper $U\subset V$,
+\begin{equation}\label{eq:green}
+\det\Lmat[U]=\det(\Id_U-P[U])>0
+\end{equation}
+and
+\begin{equation}\label{eq:green-reversal}
+(G_U)_{ij}
+=\frac{\pi_j}{\pi_i}(\Lmat[U]^{-1})_{ji}
+\quad(i,j\in U).
+\end{equation}
+If $|U|\geq2$ and $j\in U$,
+\begin{equation}\label{eq:inverse-ratio}
+(\Lmat[U]^{-1})_{jj}
+=\frac{\det\Lmat[U\setminus\{j\}]}{\det\Lmat[U]},
+\qquad
+\frac{\Lmat[U]^{-1}\mathbf e_j}
+     {(\Lmat[U]^{-1})_{jj}}
+=\gam^{U\setminus\{j\},j}|_U.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Stationarity gives
+$(P^*\one_V)_i=\pi_i^{-1}\sum_jP_{ji}\pi_j=1$.
+Every entry $P^*_{ij}=\pi_jP_{ji}/\pi_i$ is nonnegative.
+Also
+$\Lmat[U]=D[U]^{-1}(\Id_U-P[U])^{\mathsf T}D[U]$;
+its determinant and inverse give the equal determinant and
+\eqref{eq:green-reversal}; the positivity in
+\eqref{eq:green} follows from Lemma~\ref{lem:confined}.
+
+The first identity in \eqref{eq:inverse-ratio} is Cramer's rule;
+its numerator is positive by Lemma~\ref{lem:confined}, since
+$U\setminus\{j\}$ is nonempty and proper.
+Extend the inverse column $\Lmat[U]^{-1}\mathbf e_j$ by zero
+off $U$ and divide by its positive diagonal entry. It is one
+at $j$, zero outside $U$, and annihilated by the rows
+$U\setminus\{j\}$ of $\Lmat$. Lemma~\ref{lem:harmonic}
+identifies it with the stated harmonic extension.
+\end{proof}
+
+\begin{lemma}[Finite cover and first-entrance forest]
+\label{lem:cover}
+For an irreducible finite chain, every $T_v$ and
+$T_{\mathrm{cov}}$ is finite almost surely. For a nonempty proper
+$B\subset V$ with $r\in B$, the
+first-entrance edges of $F_B$ form a $B$-parent map, and the
+first-entrance tree is an arborescence rooted at $r$.
+\end{lemma}
+\begin{proof}
+Apply the uniform escape estimate of
+Lemma~\ref{lem:confined} to $U=V\setminus\{v\}$.
+The chance of avoiding $v$ for $m(n-1)$ further steps decays
+geometrically, from any current state outside $v$. Thus
+$T_v<\infty$ almost surely; finiteness of $V$ gives the cover
+claim. If $v\notin B$ is entered from $u$, then $T_u<T_v$.
+Following its parent edges therefore strictly decreases first
+entrance times, so it cannot cycle and must end at a vertex of
+$B$. With $B=\{r\}$ this is an arborescence.
+\end{proof}
+
+\begin{lemma}[Confined-excursion formula]
+\label{lem:excursion}
+Under Definition~\ref{def:chain}, let $P$ be irreducible, let
+$B\subsetneq V$ contain $r$, and let $f$ be a $B$-parent map.
+For a growth order $\tau=(\tau_1,\ldots,\tau_k)$ put
+$\tau_0=r$ and $U_l=U_l^\tau$. Then
+\begin{equation}\label{eq:excursion}
+\mathbb P_r(F_B=f,\ \text{discovery order}=\tau)
+=\left(\prod_{v\in Z}P_{f(v)v}\right)
+ \prod_{l=1}^{k}(G_{U_{l-1}})_{\tau_{l-1},f(\tau_l)}.
+\end{equation}
+For an ordering that is not a growth order, the probability is zero.
+\end{lemma}
+\begin{proof}
+Immediately before the first entry into $\tau_l$, the visited
+non-roots are $\tau_1,\ldots,\tau_{l-1}$, while the walk may
+visit any root in $B$. It starts this interval at $\tau_{l-1}$
+(at $r$ if $l=1$), spends $t_l\geq0$ steps within $U_{l-1}$,
+then takes the edge $f(\tau_l)\to\tau_l$.
+For fixed $t_l$ this interval has weight
+$(P[U_{l-1}]^{t_l})_{\tau_{l-1},f(\tau_l)}
+P_{f(\tau_l),\tau_l}$.
+On finite cover, the successive intervals and their lengths are
+uniquely determined; conversely, their concatenation gives exactly
+the stated event. The cases indexed by the length vector are
+disjoint. The Markov property makes their weights multiply, and
+nonnegativity permits summing over all length vectors as a product
+of the separate sums.
+Summing each length with \eqref{eq:confined} gives
+\eqref{eq:excursion}. Every recorded parent has already been
+visited, so an incompatible ordering has probability zero.
+\end{proof}
+
+\begin{lemma}[Reversal and determinant telescoping]
+\label{lem:joint-order}
+Under Lemma~\ref{lem:excursion}, let $\pi$ be the stationary
+distribution of $P$ and use the forest weight
+\eqref{eq:forest-weight}.
+Then for each $\tau\in\Ord_B(f)$,
+\begin{equation}\label{eq:joint-order}
+\mathbb P_r(F_B=f,\ \text{discovery order}=\tau)
+=\frac{\det\Lmat[B]}
+ {\pi_r(\prod_{v\in Z}\pi_v)\Lambda}\,
+ w_P(f)\,(\Lmat[B]^{-1})_{f(\tau_1),r}
+ \Pi_{B,f}(\tau).
+\end{equation}
+The formula includes $k=1$, when $\Pi_{B,f}(\tau)=1$.
+\end{lemma}
+\begin{proof}
+Apply \eqref{eq:green-reversal} to each Green entry of
+\eqref{eq:excursion}. Since
+$\prod_{l=1}^k\pi_{\tau_{l-1}}
+=\pi_r(\prod_{v\in Z}\pi_v)/\pi_{\tau_k}$, the factors
+outside the inverse entries become
+$w_P(f)\pi_{\tau_k}/[\pi_r\prod_{v\in Z}\pi_v]$.
+
+For $2\leq l\leq k$ apply \eqref{eq:inverse-ratio} to
+$U_{l-1}=U_{l-2}\cup\{\tau_{l-1}\}$ and
+$j=\tau_{l-1}$. It gives
+\[
+(\Lmat[U_{l-1}]^{-1})_{f(\tau_l),\tau_{l-1}}
+=\gam^{U_{l-2},\tau_{l-1}}_{f(\tau_l)}
+  \frac{\det\Lmat[U_{l-2}]}{\det\Lmat[U_{l-1}]}.
+\]
+The first inverse entry remains
+$(\Lmat[B]^{-1})_{f(\tau_1),r}$.
+The other determinant ratios telescope to
+$\det\Lmat[B]/\det\Lmat[U_{k-1}]$; this quotient is $1$
+when $k=1$. Since
+$U_{k-1}=V\setminus\{\tau_k\}$,
+\eqref{eq:green} and Lemma~\ref{lem:stationary} give
+$\det\Lmat[U_{k-1}]=\lambda_{\tau_k}
+=\pi_{\tau_k}\Lambda$.
+The remaining harmonic factors form $\Pi_{B,f}(\tau)$, proving
+\eqref{eq:joint-order}.
+\end{proof}
+
+\section{Aldous--Broder}
+
+\begin{definition}[Tree and forest families]
+\label{def:families}
+For nonempty $B\subseteq V$, let $\mathcal F_B$ be the finite
+set of $B$-parent maps, identified with their edge sets
+$\{(f(v),v):v\in V\setminus B\}$. If $B=\{r\}$,
+these are the arborescences rooted at $r$.
+\end{definition}
+
+\begin{theorem}[Aldous--Broder for an irreducible chain]
+\label{thm:ab}
+Let $P$ be irreducible and stochastic, let $\pi$ be its stationary
+distribution, and start the covering walk at $r\in V$.
+For every $f\in\mathcal F_{\{r\}}$, its first-entrance tree $F$
+satisfies
+\begin{equation}\label{eq:ab}
+\mathbb P_r(F=f)
+=\frac{\displaystyle\prod_{v\neq r}\pi_{f(v)}P_{f(v)v}}
+ {\displaystyle\Lambda\prod_{v\in V}\pi_v}
+=\frac{\displaystyle\prod_{v\neq r}\pi_{f(v)}P_{f(v)v}}
+ {\displaystyle\sum_{f'\in\mathcal F_{\{r\}}}
+   \prod_{v\neq r}\pi_{f'(v)}P_{f'(v)v}}.
+\end{equation}
+\end{theorem}
+\begin{proof}
+In Lemma~\ref{lem:joint-order} take $B=\{r\}$.
+Every growth order starts with a vertex whose parent is $r$,
+and the one-by-one inverse entry is
+$(\Lmat[\{r\}]^{-1})_{rr}=1/\det\Lmat[\{r\}]$.
+Thus, for each compatible discovery order $\tau$,
+\[
+\mathbb P_r(F=f,\ \text{order}=\tau)
+=\frac{w_P(f)}{\Lambda\prod_{v\in V}\pi_v}
+  \Pi_{\{r\},f}(\tau).
+\]
+Summing over growth orders and applying
+Theorem~\ref{thm:single-root} gives the first expression in
+\eqref{eq:ab}. By Lemma~\ref{lem:cover}, the first-entrance
+tree belongs to exactly one member of $\mathcal F_{\{r\}}$
+almost surely. Sum the first expression over this finite family;
+the resulting equality $1=\sum_{f'}w_P(f')/
+(\Lambda\prod_v\pi_v)$ identifies its denominator with the
+tree-weight sum, giving the second expression.
+\end{proof}
+
+\section{Stopped multi-root forest law}
+
+\begin{definition}[Order masses and completion factor]
+\label{def:completion}
+Let $P$ be irreducible and stochastic with stationary
+distribution $\pi$, let $B\subsetneq V$ be nonempty, $r\in B$, and
+$f\in\mathcal F_B$. With the matrix $\Lmat$ in
+\eqref{eq:reverse}, write
+\[
+g(B,f):=(\mathcal G_i(B,f))_{i\in B},\qquad
+\varphi_r(f):=g(B,f)^{\mathsf T}\Lmat[B]^{-1}\mathbf e_r.
+\]
+\end{definition}
+
+\begin{lemma}[Forest as a marginal of the covering tree]
+\label{lem:forest-marginal}
+Let $P$ be irreducible and stochastic with stationary
+distribution $\pi$, let $B\subsetneq V$ be nonempty, choose
+$r\in B$, and let $f\in\mathcal F_B$. Define
+\[
+\mathcal C_r(f)
+:=\{h\in\mathcal F_{\{r\}}:
+   h|_{V\setminus B}=f\}.
+\]
+Then
+\begin{equation}\label{eq:forest-marginal}
+\mathbb P_r(F_B=f)
+=\sum_{h\in\mathcal C_r(f)}\mathbb P_r(F=h)
+=\frac{\displaystyle\sum_{h\in\mathcal C_r(f)}w_P(h)}
+ {\displaystyle\Lambda\prod_{v\in V}\pi_v}.
+\end{equation}
+For $h\in\mathcal C_r(f)$,
+$w_P(h)=w_P(f)\prod_{j\in B\setminus\{r\}}
+\pi_{h(j)}P_{h(j)j}$.
+\end{lemma}
+\begin{proof}
+The first-entrance edge into any $v\in Z$ is fixed at time
+$T_v\leq T_B\leq T_{\mathrm{cov}}$. Thus the stopped forest is
+exactly the restriction of the full first-entrance tree to edges
+entering $Z$. The disjoint events $\{F=h\}$ with
+$h\in\mathcal C_r(f)$ partition $\{F_B=f\}$.
+Apply Theorem~\ref{thm:ab} to each event. The factorization of
+$w_P(h)$ separates its edges entering $Z$ from those entering
+$B\setminus\{r\}$.
+\end{proof}
+
+\begin{theorem}[Stopped forest law and completion weights]
+\label{thm:stopped}
+Let $P$ be irreducible and stochastic with stationary
+distribution $\pi$, let $B\subsetneq V$ be nonempty, choose a
+seed $r\in B$, and let $f\in\mathcal F_B$. Then
+\begin{equation}\label{eq:stopped}
+\mathbb P_r(F_B=f)
+=\frac{\det\Lmat[B]}
+ {\pi_r(\prod_{v\in Z}\pi_v)\Lambda}
+\,w_P(f)\,\varphi_r(f).
+\end{equation}
+The total weight of the arborescence completions of $f$ is
+\begin{equation}\label{eq:completion-weight}
+\sum_{h\in\mathcal C_r(f)}
+ \prod_{j\in B\setminus\{r\}}
+ \pi_{h(j)}P_{h(j)j}
+=\det\Lmat[B]
+ \left(\prod_{j\in B\setminus\{r\}}\pi_j\right)
+ \varphi_r(f).
+\end{equation}
+\end{theorem}
+\begin{proof}
+Sum \eqref{eq:joint-order} over the compatible growth orders,
+grouping them by the root $i=f(\tau_1)$. The common factor is
+$\det\Lmat[B]w_P(f)/
+[\pi_r(\prod_{v\in Z}\pi_v)\Lambda]$;
+the remaining sum is
+\[
+\sum_{i\in B}\mathcal G_i(B,f)
+   (\Lmat[B]^{-1})_{ir}
+=g(B,f)^{\mathsf T}\Lmat[B]^{-1}\mathbf e_r
+=\varphi_r(f).
+\]
+This proves \eqref{eq:stopped}, including when $w_P(f)=0$.
+
+If $w_P(f)>0$, compare \eqref{eq:stopped} with
+\eqref{eq:forest-marginal}, use the factorization of $w_P(h)$,
+and cancel $w_P(f)$. Since
+$\prod_{v\in V}\pi_v=
+(\prod_{v\in Z}\pi_v)(\prod_{j\in B}\pi_j)$,
+the resulting equality is \eqref{eq:completion-weight}.
+
+For arbitrary $f$, set
+$P_\varepsilon=(1-\varepsilon)P+
+\varepsilon\one_V\one_V^{\mathsf T}/n$, with
+$0<\varepsilon<1$. All its entries and hence all its forest
+weights are positive, so \eqref{eq:completion-weight} holds for
+$P_\varepsilon$. By Lemma~\ref{lem:stationary}, its stationary
+distribution is the normalized cofactor vector of
+$\Id_V-P_\varepsilon$, and therefore converges to $\pi$ as
+$\varepsilon\downarrow0$. Lemma~\ref{lem:green} ensures that
+all principal minors used in the harmonic extensions and in
+$\Lmat[B]^{-1}$ are positive at the limit; continuity keeps them
+nonzero for sufficiently small $\varepsilon$. The set of growth
+orders is finite, so its order masses and $\varphi_r(f)$ are
+continuous at the limit. Every term on both sides of
+\eqref{eq:completion-weight} is thus continuous there.
+Taking the limit proves the formula also when $w_P(f)=0$.
+\end{proof}
+
+\section{Mathematical contract for the Lean development}
+
+The three public endpoints are Theorems~\ref{thm:order-mass},
+\ref{thm:ab}, and~\ref{thm:stopped}, including both displayed
+conclusions of Theorem~\ref{thm:stopped}. Theorem~\ref{thm:single-root}
+and the lemmas before each endpoint are its proof obligations, not
+additional application targets. In Sections 1--4, $\Lmat$ is an
+arbitrary real zero-row-sum matrix where stated. In the chain
+sections it is specialized to $\Id-P^*$ by \eqref{eq:reverse}.
+
+The following boundary conditions are part of the statements to be
+formalized.
+\begin{enumerate}
+\item A root set in the order--mass theorem is nonempty and proper,
+so $k=|V\setminus B|\geq1$. The peeling bijection and the fold are
+used only for $k\geq2$; the $k=1$ case is proved directly. No
+``growth order'' for $B=V$ is silently used.
+\item Theorem~\ref{thm:order-mass} needs nonzero minors only for
+proper bases $U_l^\tau$ of growth orders of the \emph{given}
+parent map. Neither all intermediate subsets nor positivity of
+the matrix entries is assumed. The conclusion holds for every
+root, including one with no children. Only its reading at $|B|=1$
+takes a cofactor of a $1\times1$ matrix, with the Leibniz value
+$\det(\varnothing)=1$. Theorem~\ref{thm:single-root} is proved
+through Lemma~\ref{lem:single-base} and partition of unity, not
+by that reading; the Aldous--Broder and stopped-forest endpoints
+depend on it only through Theorem~\ref{thm:single-root}.
+\item The Aldous--Broder and stopped-forest statements assume an
+irreducible row-stochastic matrix, not reversibility,
+aperiodicity, or strictly positive transitions. Their probabilities
+refer to the Markov chain started at the stated seed. The
+first-entrance edge of a non-root $v$ is $(X_{T_v-1},v)$; the
+seed $r$ is never assigned such an edge.
+\item Equation~\eqref{eq:completion-weight} is asserted even when
+$w_P(f)=0$. It cannot be obtained by cancelling that weight.
+Its separate perturbation-and-continuity argument is required.
+\end{enumerate}
+
+The manuscript's $B$-parent map is a function on $Z=V\setminus B$.
+A total Lean function $f:V\to V$ may be used internally only after
+proving that values on $B$ do not affect the forest, orders, blocks,
+weights, or theorem statement. The paper-facing theorem should
+accept a map on the non-roots, or provide an explicit equivalence
+with that formulation. Likewise, $\cof_i(A)$ always deletes both
+row and column $i$; the two matrix levels $\Lmat[B]$ and
+$\Nmat(B,M_f)$ must not be conflated.
+
+
+\end{document}

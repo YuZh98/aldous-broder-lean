@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "aldous-broder-lean: A Lean 4 formalization of the order-mass identity and the Aldous-Broder theorem"
+type: software
+authors:
+  - family-names: Zheng
+    given-names: Hugh
+    affiliation: Texas A&M University
+    orcid: "https://orcid.org/0009-0001-2712-5044"
+repository-code: "https://github.com/YuZh98/aldous-broder-lean"
+license: Apache-2.0
+version: 1.0.0
+keywords:
+  - Lean 4
+  - mathlib
+  - formal verification
+  - Aldous-Broder algorithm
+  - random spanning trees
+  - Markov chains
